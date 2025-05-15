@@ -25,7 +25,7 @@ $LASTEXITCODE = 0
 # are no static function variables in PowerShell
 $diskState = New-Object -TypeName PSObject -Property @{
     spaceAtLastCheck = @{}
-    spaceAtStart = @{}
+    spaceAtStart     = @{}
 }
 
 function Write-DiskSpace
@@ -39,16 +39,10 @@ function Write-DiskSpace
     if ($Reset)
     {
         # pretend it's like the first time of running
-         $diskState = New-Object -TypeName PSObject -Property @{
+        $diskState = New-Object -TypeName PSObject -Property @{
             spaceAtLastCheck = @{}
-            spaceAtStart = @{}
+            spaceAtStart     = @{}
         }
-    }
-
-    if ($ShowTotals)
-    {
-        # initialise this variable to add up
-        $totalOverallChange = 0
     }
 
     $drives = Get-WmiObject -Class Win32_LogicalDisk | Where-Object {
@@ -198,6 +192,12 @@ Start-Process -FilePath "cleanmgr.exe" -ArgumentList "/sagerun:42" -NoNewWindow 
 Write-DiskSpace
 Write-Host "------"
 
+
+# Re-register all Windows Store apps for all users
+#
+#Get-AppXPackage -AllUsers | Foreach {Add-AppxPackage -DisableDevelopmentMode -Register "$($_.InstallLocation)\AppXManifest.xml"}
+
+
 # Run CCleaner's customized autoclean (ensure this path is correct)
 Write-Host ""
 Write-Host "==== Running CCleaner's customized autoclean..." -ForegroundColor Cyan
@@ -216,8 +216,12 @@ else
 }
 
 
-$localLowPath = [Environment]::GetFolderPath('LocalApplicationData') -replace '\\Local$', '\LocalLow'
-$nvDxShaderCachePath = "$localLowPath\NVIDIA\PerDriverVersion\DXCache\"
+# old location for the NVIDIA DirectX shader cache
+#$localLowPath = [Environment]::GetFolderPath('LocalApplicationData') -replace '\\Local$', '\LocalLow'
+#$nvDxShaderCachePath = "$localLowPath\NVIDIA\PerDriverVersion\DXCache\"
+
+# new location for the NVIDIA DirectX shader cache
+$nvDxShaderCachePath = "$([Environment]::GetFolderPath('LocalApplicationData'))\NVIDIA\DXCache\"
 
 Write-Host "NVIDIA DirectX shader cache: $nvDxShaderCachePath"
 
@@ -297,13 +301,13 @@ Write-Host "==== Performing Docker system prune (unused images and anonymous vol
 #{
 #    Write-Host "Docker daemon is not running.  Skipping system prune." -ForegroundColor Yellow
 #}
-#else 
+#else
 #{
-    #Write-Host "Docker daemon is running.  Performing thorough system prune..." -ForegroundColor Cyan
-    docker system prune --all --volumes
+#Write-Host "Docker daemon is running.  Performing thorough system prune..." -ForegroundColor Cyan
+docker system prune --all --volumes
 
-    Write-DiskSpace
-    Write-Host "------"
+Write-DiskSpace
+Write-Host "------"
 #}
 
 Write-Host ""
