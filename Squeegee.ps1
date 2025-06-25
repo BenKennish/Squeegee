@@ -146,6 +146,7 @@ Get-CimInstance -ClassName Win32_LogicalDisk | Where-Object {
 
 
 # Check for component store corruption and repair if necessary
+# OR could do /checkhealth instead of /restorehealth, then prompt on finding issue?
 Write-Host ""
 Write-Host "==== Checking for component store corruption and repairing when necessary..." -ForegroundColor Cyan
 dism /Online /Cleanup-Image /RestoreHealth
@@ -309,6 +310,11 @@ docker system prune --all --volumes
 Write-DiskSpace
 Write-Host "------"
 #}
+
+
+Write-Host "==== Listing software upgrades possible according to winget..." -ForegroundColor Cyan
+winget upgrade --include-unknown
+Write-Host "------"
 
 Write-Host ""
 Write-Host "All done!"
