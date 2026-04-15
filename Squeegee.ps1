@@ -240,15 +240,15 @@ if (Test-Path $nvDxShaderCachePath)
 
             # Filter lines containing file locks and extract process names
             $lockedProcesses = $handleOutput |
-            Select-String -Pattern "pid: (\d+).*" | # Match lines with process details
-            ForEach-Object {
-                # Extract process name
-                if ($_ -match "^(.+?)\s+pid:")
-                {
-                    $matches[1].Trim() # Return the process name
-                }
-            } |
-            Sort-Object -Unique
+                Select-String -Pattern "pid: (\d+).*" | # Match lines with process details
+                ForEach-Object {
+                    # Extract process name
+                    if ($_ -match "^(.+?)\s+pid:")
+                    {
+                        $matches[1].Trim() # Return the process name
+                    }
+                } |
+                Sort-Object -Unique
 
             # Output the list of locked processes
             if ($lockedProcesses.Count -gt 0)
@@ -315,6 +315,12 @@ Write-Host "------"
 Write-Host "==== Listing software upgrades possible according to winget..." -ForegroundColor Cyan
 winget upgrade --include-unknown
 Write-Host "------"
+
+$answer = Read-Host "Do you want to upgrade all packages with a known version? (y/N) "
+if ($answer.ToLower() -eq "y")
+{
+    winget upgrade --accept-package-agreements --accept-source-agreements --all
+}
 
 Write-Host ""
 Write-Host "All done!"
