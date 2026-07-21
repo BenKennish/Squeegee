@@ -202,22 +202,7 @@ Write-Host "------"
 #Get-AppXPackage -AllUsers | Foreach {Add-AppxPackage -DisableDevelopmentMode -Register "$($_.InstallLocation)\AppXManifest.xml"}
 
 
-# Run CCleaner's customized autoclean (ensure this path is correct)
-Write-Host ""
-Write-Host "==== Running CCleaner's customized autoclean..." -ForegroundColor Cyan
-$cCleanerPath = "C:\Program Files\CCleaner\CCleaner64.exe"
-if (Test-Path $cCleanerPath)
-{
-    #& $cCleanerPath "/AUTO"
-    Start-Process -FilePath $cCleanerPath -ArgumentList "/AUTO" -NoNewWindow -Wait
 
-    Write-DiskSpace
-    Write-Host "------"
-}
-else
-{
-    Write-Host "CCleaner not found at $cCleanerPath. Skipping CCleaner autoclean step." -ForegroundColor Yellow
-}
 
 
 # old location for the NVIDIA DirectX shader cache
