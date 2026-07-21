@@ -176,7 +176,7 @@ Write-Host "------"
 Write-Host ""
 Write-Host "==== Cleaning up store of superseded components (WinSxS folder)..." -ForegroundColor Cyan
 dism /Online /Cleanup-Image /StartComponentCleanup
-# Perplexity: reserve /ResetBase for special cases like a sealed image or a machine where you explicitly accept losing update rollback. 
+# Perplexity: reserve /ResetBase for special cases like a sealed image or a machine where you explicitly accept losing update rollback.
 #  without /ResetBase this command "cleans up superseded WinSxS components, but it does not permanently lock in the current servicing state"
 
 if ($LASTEXITCODE -ne 0)
@@ -197,6 +197,15 @@ Write-DiskSpace
 Write-Host "------"
 
 
+# manually trigger the built-in Windows servicing task that cleans component-store leftovers
+# it is basically the “run Windows’ own maintenance cleanup job now” version
+# DISM /Online /Cleanup-Image /StartComponentCleanup is the more direct DISM-based equivalent.
+# Microsoft says the DISM version gives similar results but without the 30-day wait and without the 1-hour timeout limitation
+#
+# schtasks /Run /TN "\Microsoft\Windows\Servicing\StartComponentCleanup"
+
+
+
 # Re-register all Windows Store apps for all users
 #
 #Get-AppXPackage -AllUsers | Foreach {Add-AppxPackage -DisableDevelopmentMode -Register "$($_.InstallLocation)\AppXManifest.xml"}
@@ -211,6 +220,12 @@ Write-Host "------"
 
 # new location for the NVIDIA DirectX shader cache
 $nvDxShaderCachePath = "$([Environment]::GetFolderPath('LocalApplicationData'))\NVIDIA\DXCache\"
+
+# other global shader cache locations:
+
+# %localappdata%\D3DSCache  (Windows’ DirectX shader cache)
+# C:\Program Files (x86)\Steam\SteamApps\shadercache\{appid}  (Steam's per-game shader pre-caching)
+
 
 Write-Host "NVIDIA DirectX shader cache: $nvDxShaderCachePath"
 
