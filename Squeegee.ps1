@@ -175,7 +175,10 @@ Write-Host "------"
 # Clean up the component store (WinSxS folder)
 Write-Host ""
 Write-Host "==== Cleaning up store of superseded components (WinSxS folder)..." -ForegroundColor Cyan
-dism /Online /Cleanup-Image /StartComponentCleanup /ResetBase
+dism /Online /Cleanup-Image /StartComponentCleanup
+# Perplexity: reserve /ResetBase for special cases like a sealed image or a machine where you explicitly accept losing update rollback. 
+#  without /ResetBase this command "cleans up superseded WinSxS components, but it does not permanently lock in the current servicing state"
+
 if ($LASTEXITCODE -ne 0)
 {
     Write-Host "Command returned exit code $LASTEXITCODE" -ForegroundColor Red
