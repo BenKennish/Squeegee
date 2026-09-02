@@ -205,12 +205,9 @@ Write-Host "------"
 # schtasks /Run /TN "\Microsoft\Windows\Servicing\StartComponentCleanup"
 
 
-
 # Re-register all Windows Store apps for all users
 #
 #Get-AppXPackage -AllUsers | Foreach {Add-AppxPackage -DisableDevelopmentMode -Register "$($_.InstallLocation)\AppXManifest.xml"}
-
-
 
 
 
@@ -324,6 +321,15 @@ if ($answer.ToLower() -eq "y")
 {
     winget upgrade --accept-package-agreements --accept-source-agreements --all
 }
+
+
+$answer = Read-Host "Do you want to initiate updates to all Microsoft Store apps? (y/N) "
+if ($answer.ToLower() -eq "y")
+{
+    Write-Host "==== Initiating update of all Microsoft Store apps (runs in background)..." -ForegroundColor Cyan
+    Get-CimInstance -Namespace 'Root\cimv2\mdm\dmmap' -ClassName 'MDM_EnterpriseModernAppManagement_AppManagement01' | Invoke-CimMethod -Verbose -MethodName UpdateScanMethod
+}
+
 
 Write-Host ""
 Write-Host "All done!"
