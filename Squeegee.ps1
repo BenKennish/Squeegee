@@ -28,6 +28,28 @@ $diskState = New-Object -TypeName PSObject -Property @{
     spaceAtStart     = @{}
 }
 
+
+function Invoke-LoggedCommand
+{
+    [CmdletBinding()]
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        [string]$Command,
+
+        [string[]]$Arguments = @()
+    )
+
+    Write-Host "Running: $Command $($Arguments -join ' ')" -ForegroundColor Yellow
+
+    & $Command @Arguments
+
+    # Make the exit code available in the calling scope.
+    #Set-Variable -Name LASTEXITCODE -Value $LASTEXITCODE -Scope 1
+}
+
+
+
 function Write-DiskSpace
 {
     param
@@ -124,8 +146,8 @@ Write-Host "------"
 
 # Shut down all WSL instances and the lightweight VM
 Write-Host "==== Shutting down the WSL lightweight VM..." -ForegroundColor Cyan
-wsl --shutdown
 
+Invoke-LoggedCommand -Command 'wsl' -Arguments @('--shutdown')
 
 Write-Host "==== Running chkdsk scan on all fixed disk drives..." -ForegroundColor Cyan
 # Enumerate only fixed drives (DriveType 3)
@@ -135,7 +157,8 @@ Get-CimInstance -ClassName Win32_LogicalDisk | Where-Object {
 
     Write-Host ""
     Write-Host "======= Checking for filesystem errors on $($_.DeviceID) drive..." -ForegroundColor Green
-    chkdsk /V /scan /perf $_.DeviceID
+
+    Invoke-LoggedCommand -Command 'chkdsk' -Arguments @('/V', '/scan', '/perf', $_.DeviceID)
 
     if ($LASTEXITCODE -ne 0)
     {
@@ -149,7 +172,8 @@ Get-CimInstance -ClassName Win32_LogicalDisk | Where-Object {
 # OR could do /checkhealth instead of /restorehealth, then prompt on finding issue?
 Write-Host ""
 Write-Host "==== Checking for component store corruption and repairing when necessary..." -ForegroundColor Cyan
-dism /Online /Cleanup-Image /RestoreHealth
+
+Invoke-LoggedCommand -Command 'dism' -Arguments @('/Online', '/Cleanup-Image', '/RestoreHealth')
 if ($LASTEXITCODE -ne 0)
 {
     Write-Host "Command returned exit code $LASTEXITCODE" -ForegroundColor Red
@@ -161,21 +185,32 @@ Write-Host "------"
 
 # Verify integrity of system files
 Write-Host ""
-Write-Host "==== Checking integrity of system files and replacing them if necessary..." -ForegroundColor Cyan
-sfc /scannow
+Write-Host "==== Checking integrity of protected system files and replacing them if necessary..." -ForegroundColor Cyan
+Invoke-LoggedCommand -Command 'sfc' -Arguments @('/scannow')
+
 if ($LASTEXITCODE -ne 0)
 {
     Write-Host "Command returned exit code $LASTEXITCODE" -ForegroundColor Red
     exit
 }
 
+# it once terminated with...
+#
+# There is a system repair pending which requires reboot to complete.  Restart
+# Windows and run sfc again.
+#
+# but the $LASTEXITCODE was still 0
+
+
 Write-DiskSpace
 Write-Host "------"
 
 # Clean up the component store (WinSxS folder)
 Write-Host ""
-Write-Host "==== Cleaning up store of superseded components (WinSxS folder)..." -ForegroundColor Cyan
-dism /Online /Cleanup-Image /StartComponentCleanup
+Write-Host "==== Cleaning up component store of superseded components (WinSxS folder)..." -ForegroundColor Cyan
+Invoke-LoggedCommand -Command 'dism' -Arguments @('/Online', '/Cleanup-Image', '/StartComponentCleanup')
+# Help page: Use /StartComponentCleanup to clean up the superseded components and reduce the size of the component store
+#
 # Perplexity: reserve /ResetBase for special cases like a sealed image or a machine where you explicitly accept losing update rollback.
 #  without /ResetBase this command "cleans up superseded WinSxS components, but it does not permanently lock in the current servicing state"
 
@@ -191,7 +226,12 @@ Write-Host "------"
 # Run Disk Cleanup using preset #42
 Write-Host ""
 Write-Host "==== Running Disk Cleanup on all disk drives using preset #42..." -ForegroundColor Cyan
-Start-Process -FilePath "cleanmgr.exe" -ArgumentList "/sagerun:42" -NoNewWindow -Wait
+
+#Start-Process -FilePath "cleanmgr.exe" -ArgumentList "/sagerun:42" -NoNewWindow -Wait
+Invoke-LoggedCommand -Command 'cleanmgr.exe' -Arguments @('/sagerun:42')
+
+# you can configure the preset by running:
+#  cleanmgr /sageset:42
 
 Write-DiskSpace
 Write-Host "------"
@@ -210,7 +250,6 @@ Write-Host "------"
 #Get-AppXPackage -AllUsers | Foreach {Add-AppxPackage -DisableDevelopmentMode -Register "$($_.InstallLocation)\AppXManifest.xml"}
 
 
-
 # old location for the NVIDIA DirectX shader cache
 #$localLowPath = [Environment]::GetFolderPath('LocalApplicationData') -replace '\\Local$', '\LocalLow'
 #$nvDxShaderCachePath = "$localLowPath\NVIDIA\PerDriverVersion\DXCache\"
@@ -218,8 +257,8 @@ Write-Host "------"
 # new location for the NVIDIA DirectX shader cache
 $nvDxShaderCachePath = "$([Environment]::GetFolderPath('LocalApplicationData'))\NVIDIA\DXCache\"
 
-# other global shader cache locations:
-
+# other global shader cache locations that we might want to clean up...
+#
 # %localappdata%\D3DSCache  (Windows’ DirectX shader cache)
 # C:\Program Files (x86)\Steam\SteamApps\shadercache\{appid}  (Steam's per-game shader pre-caching)
 
@@ -305,7 +344,8 @@ Write-Host "==== Performing Docker system prune (unused images and anonymous vol
 #else
 #{
 #Write-Host "Docker daemon is running.  Performing thorough system prune..." -ForegroundColor Cyan
-docker system prune --all --volumes
+
+Invoke-LoggedCommand -Command 'docker' -Arguments @('system', 'prune', '--all', '--volumes')
 
 Write-DiskSpace
 Write-Host "------"
@@ -313,13 +353,13 @@ Write-Host "------"
 
 
 Write-Host "==== Listing software upgrades possible according to winget..." -ForegroundColor Cyan
-winget upgrade --include-unknown
+Invoke-LoggedCommand -Command 'winget' -Arguments @('upgrade', '--include-unknown')
 Write-Host "------"
 
 $answer = Read-Host "Do you want to upgrade all packages with a known version? (y/N) "
 if ($answer.ToLower() -eq "y")
 {
-    winget upgrade --accept-package-agreements --accept-source-agreements --all
+    Invoke-LoggedCommand -Command 'winget' -Arguments @('upgrade', '--accept-package-agreements', '--accept-source-agreements', '--all')
 }
 
 
@@ -336,6 +376,3 @@ Write-Host "All done!"
 Write-Host ""
 Write-DiskSpace -ShowTotals
 Write-Host "------"
-
-Write-Host "Exiting in 2s..."
-Start-Sleep -Seconds 2
